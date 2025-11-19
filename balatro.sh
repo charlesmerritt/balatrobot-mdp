@@ -191,9 +191,9 @@ get_platform_config() {
 		;;
 	linux)
 		# Linux configuration using Proton (Steam Play)
-		PREFIX="$HOME/.steam/steam/steamapps/compatdata/2379780"
-		PROTON_DIR="$HOME/.steam/steam/steamapps/common/Proton 9.0 (Beta)"
-		EXE="$HOME/.steam/debian-installation/steamapps/common/Balatro/Balatro.exe"
+		PREFIX="$HOME/.local/share/Steam/steamapps/compatdata/2379780"
+		PROTON_DIR="$HOME/.local/share/Steam/steamapps/common/Proton - Experimental"
+		EXE="$HOME/.local/share/Steam/steamapps/common/Balatro/Balatro.exe"
 
 		STEAM_PATH="$PROTON_DIR"
 		LIBRARY_ENV_VAR="" # Not used on Linux when running via Proton
@@ -279,12 +279,12 @@ start_balatro_instance() {
 	# Set up platform-specific Balatro configuration
 	# Platform-specific launch
 	if [[ "$PLATFORM" == "linux" ]]; then
-		PREFIX="$HOME/.steam/steam/steamapps/compatdata/2379780"
+		PREFIX="$HOME/.local/share/Steam/steamapps/compatdata/2379780"
 		PROTON_DIR="$STEAM_PATH"
-		EXE="$HOME/.steam/debian-installation/steamapps/common/Balatro/Balatro.exe"
+		EXE="$HOME/.local/share/Steam/steamapps/common/Balatro/Balatro.exe"
 
 		# Steam / Proton context
-		export STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.steam/steam"
+		export STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.local/share/Steam"
 		export STEAM_COMPAT_DATA_PATH="$PREFIX"
 		export SteamAppId=2379780
 		export SteamGameId=2379780
