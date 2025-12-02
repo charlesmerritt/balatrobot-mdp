@@ -1,5 +1,3 @@
-"""Gymnasium MDP environment for Balatro game using BalatroBot."""
-
 import logging
 import random
 from typing import Any
