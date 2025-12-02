@@ -130,6 +130,13 @@ class BalatroEnv(gym.Env):
             }
         )
 
+    def _require_client(self) -> BalatroClient:
+        """Return the connected client, raising if not initialized."""
+
+        if self.client is None:
+            raise RuntimeError("Balatro client is not initialized; call reset() first")
+        return self.client
+
     def _get_obs(self) -> dict[str, np.ndarray]:
         """Extract observation from current game state.
 
@@ -558,13 +565,15 @@ class BalatroEnv(gym.Env):
 
         # Go to menu first
         try:
-            self.client.send_message("go_to_menu", {})
+            client = self._require_client()
+            client.send_message("go_to_menu", {})
         except BalatroError as e:
             logger.warning(f"Failed to go to menu: {e}")
 
         # Start a new run
         try:
-            response = self.client.send_message(
+            client = self._require_client()
+            response = client.send_message(
                 "start_run",
                 {
                     "deck": self.deck,

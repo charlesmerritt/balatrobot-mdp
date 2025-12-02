@@ -1,6 +1,9 @@
 """Tests for BalatroBot Gymnasium environment."""
 
+from typing import cast
+
 import pytest
+from gymnasium import spaces
 
 from balatrobot.enums import Decks, Stakes
 from balatrobot.env import BalatroEnv
@@ -38,7 +41,7 @@ class TestBalatroEnv:
     def test_observation_space(self):
         """Test that observation space is properly defined."""
         env = BalatroEnv()
-        obs_space = env.observation_space
+        obs_space = cast(spaces.Dict, env.observation_space)
 
         # Check that all expected keys are present
         expected_keys = {
@@ -57,7 +60,8 @@ class TestBalatroEnv:
     def test_action_space(self):
         """Test that action space is properly defined."""
         env = BalatroEnv()
-        assert env.action_space.n == 64
+        action_space = cast(spaces.Discrete, env.action_space)
+        assert action_space.n == 64
         env.close()
 
     def test_get_obs_no_state(self):

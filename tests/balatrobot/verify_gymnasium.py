@@ -1,6 +1,9 @@
 """Verification script for Gymnasium integration."""
 
 import sys
+from typing import cast
+
+from gymnasium import spaces
 
 print("=" * 60)
 print("BalatroBot Gymnasium Integration Verification")
@@ -29,8 +32,9 @@ except Exception as e:
 print("\n[3/5] Testing spaces...")
 try:
     print(f"  Action space: {env.action_space}")
-    print(f"  Observation space: Dict with {len(env.observation_space.spaces)} keys")
-    print(f"  Keys: {list(env.observation_space.spaces.keys())}")
+    obs_space = cast(spaces.Dict, env.observation_space)
+    print(f"  Observation space: Dict with {len(obs_space.spaces)} keys")
+    print(f"  Keys: {list(obs_space.spaces.keys())}")
     print("✓ Spaces defined correctly")
 except Exception as e:
     print(f"✗ Failed to check spaces: {e}")
