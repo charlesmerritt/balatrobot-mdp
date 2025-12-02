@@ -116,17 +116,19 @@ class BalatroEnv(gym.Env):
         self.action_space = spaces.Discrete(64)  # Extended action space
 
         # Observation space - dictionary of game state features
-        self.observation_space = spaces.Dict({
-            "state": spaces.Discrete(28),  # Game state enum
-            "chips": spaces.Box(0, np.inf, shape=(1,), dtype=np.float32),
-            "dollars": spaces.Box(0, np.inf, shape=(1,), dtype=np.float32),
-            "round": spaces.Box(0, np.inf, shape=(1,), dtype=np.float32),
-            "hands_left": spaces.Box(0, 10, shape=(1,), dtype=np.float32),
-            "discards_left": spaces.Box(0, 10, shape=(1,), dtype=np.float32),
-            "hand_size": spaces.Box(0, 20, shape=(1,), dtype=np.float32),
-            "joker_count": spaces.Box(0, 10, shape=(1,), dtype=np.float32),
-            "deck_vector": spaces.Box(0, 1, shape=(52,), dtype=np.float32),
-        })
+        self.observation_space = spaces.Dict(
+            {
+                "state": spaces.Discrete(28),  # Game state enum
+                "chips": spaces.Box(0, np.inf, shape=(1,), dtype=np.float32),
+                "dollars": spaces.Box(0, np.inf, shape=(1,), dtype=np.float32),
+                "round": spaces.Box(0, np.inf, shape=(1,), dtype=np.float32),
+                "hands_left": spaces.Box(0, 10, shape=(1,), dtype=np.float32),
+                "discards_left": spaces.Box(0, 10, shape=(1,), dtype=np.float32),
+                "hand_size": spaces.Box(0, 20, shape=(1,), dtype=np.float32),
+                "joker_count": spaces.Box(0, 10, shape=(1,), dtype=np.float32),
+                "deck_vector": spaces.Box(0, 1, shape=(52,), dtype=np.float32),
+            }
+        )
 
     def _get_obs(self) -> dict[str, np.ndarray]:
         """Extract observation from current game state.
@@ -148,7 +150,11 @@ class BalatroEnv(gym.Env):
                 "deck_vector": self.deck_vector,
             }
 
-        state_value = self.current_state.state if self.current_state.state is not None else State.MENU.value
+        state_value = (
+            self.current_state.state
+            if self.current_state.state is not None
+            else State.MENU.value
+        )
         game = self.current_state.game
         hand = self.current_state.hand
 
@@ -195,7 +201,9 @@ class BalatroEnv(gym.Env):
         return {
             "episode_step": self.current_step,
             "episode_reward": self.episode_reward,
-            "game_state": self.current_state.model_dump() if self.current_state else None,
+            "game_state": self.current_state.model_dump()
+            if self.current_state
+            else None,
         }
 
     def _calculate_reward(self) -> float:
@@ -295,7 +303,7 @@ class BalatroEnv(gym.Env):
                 logger.debug("Action: Starting new run")
                 response = self.client.send_message(
                     "start_run",
-                    {"deck": self.deck, "stake": self.stake, "seed": self.game_seed}
+                    {"deck": self.deck, "stake": self.stake, "seed": self.game_seed},
                 )
                 self.current_state = G(**response)
 
@@ -303,16 +311,14 @@ class BalatroEnv(gym.Env):
                 # Always select blind (never skip to avoid boss blind errors)
                 logger.debug("Action: select blind")
                 response = self.client.send_message(
-                    "skip_or_select_blind",
-                    {"action": "select"}
+                    "skip_or_select_blind", {"action": "select"}
                 )
                 self.current_state = G(**response)
 
             elif state == State.SELECTING_HAND.value:
                 action_name, cards = self._get_hand_action()
                 response = self.client.send_message(
-                    "play_hand_or_discard",
-                    {"action": action_name, "cards": cards}
+                    "play_hand_or_discard", {"action": action_name, "cards": cards}
                 )
                 self.current_state = G(**response)
 
@@ -411,7 +417,9 @@ class BalatroEnv(gym.Env):
         )
         return action_name, cards
 
-    def _greedy_hand_action(self, card_dicts: list[dict[str, Any]]) -> tuple[str, list[int]]:
+    def _greedy_hand_action(
+        self, card_dicts: list[dict[str, Any]]
+    ) -> tuple[str, list[int]]:
         indices, hand_name, _ = get_best_hand_info(card_dicts)
         logger.debug("Greedy policy playing %s with cards %s", hand_name, indices)
         return "play_hand", indices
@@ -562,7 +570,7 @@ class BalatroEnv(gym.Env):
                     "deck": self.deck,
                     "stake": self.stake,
                     "seed": self.game_seed,
-                }
+                },
             )
             self.current_state = G(**response)
             logger.info(f"Started new run with {self.deck} at stake {self.stake}")
@@ -615,7 +623,11 @@ class BalatroEnv(gym.Env):
         if self.render_mode == "human":
             # Print current game state
             if self.current_state:
-                state_name = State(self.current_state.state).name if self.current_state.state else "UNKNOWN"
+                state_name = (
+                    State(self.current_state.state).name
+                    if self.current_state.state
+                    else "UNKNOWN"
+                )
                 print("\n=== Balatro Game State ===")
                 print(f"State: {state_name}")
                 if self.current_state.game:
@@ -623,8 +635,12 @@ class BalatroEnv(gym.Env):
                     print(f"Dollars: {self.current_state.game.dollars}")
                     print(f"Round: {self.current_state.game.round}")
                     if self.current_state.game.current_round:
-                        print(f"Hands Left: {self.current_state.game.current_round.hands_left}")
-                        print(f"Discards Left: {self.current_state.game.current_round.discards_left}")
+                        print(
+                            f"Hands Left: {self.current_state.game.current_round.hands_left}"
+                        )
+                        print(
+                            f"Discards Left: {self.current_state.game.current_round.discards_left}"
+                        )
                 print(f"Episode Step: {self.current_step}/{self.max_steps}")
                 print(f"Episode Reward: {self.episode_reward:.2f}")
                 print("=" * 30)
@@ -637,6 +653,7 @@ class BalatroEnv(gym.Env):
                     screenshot_path = self.client.screenshot()
                     # Load and return as numpy array
                     from PIL import Image
+
                     img = Image.open(screenshot_path)
                     return np.array(img)
                 except Exception as e:

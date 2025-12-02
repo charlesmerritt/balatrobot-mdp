@@ -187,14 +187,16 @@ def _is_straight(ranks: list[str]) -> bool:
 
     # Check regular straight
     for i in range(len(values) - 4):
-        if values[i+4] - values[i] == 4:
+        if values[i + 4] - values[i] == 4:
             return True
 
     # Check Ace-low straight (A-2-3-4-5)
-    ace_low_values = [RANK_VALUES_ACE_LOW.get(r, 0) for r in ranks if r in RANK_VALUES_ACE_LOW]
+    ace_low_values = [
+        RANK_VALUES_ACE_LOW.get(r, 0) for r in ranks if r in RANK_VALUES_ACE_LOW
+    ]
     ace_low_values = sorted(set(ace_low_values))
     for i in range(len(ace_low_values) - 4):
-        if ace_low_values[i+4] - ace_low_values[i] == 4:
+        if ace_low_values[i + 4] - ace_low_values[i] == 4:
             return True
 
     return False
@@ -264,7 +266,9 @@ def get_best_hand_target(cards: list[dict[str, Any]]) -> HandTarget:
     for suit, indices in suit_to_indices.items():
         if len(indices) < 2:
             continue
-        straight_length, straight_indices = _find_best_straight_indices(rank_to_indices, indices)
+        straight_length, straight_indices = _find_best_straight_indices(
+            rank_to_indices, indices
+        )
         completeness = min(straight_length / 5.0, 1.0)
         best_target = _consider_target(
             best_target,
@@ -296,7 +300,9 @@ def get_best_hand_target(cards: list[dict[str, Any]]) -> HandTarget:
     return best_target
 
 
-def get_flush_draw_indices(cards: Iterable[dict[str, Any]]) -> tuple[str | None, list[int]]:
+def get_flush_draw_indices(
+    cards: Iterable[dict[str, Any]],
+) -> tuple[str | None, list[int]]:
     """Return suit and indices if there's a flush draw (>=4 cards of same suit)."""
 
     suits = [get_card_suit(card) for card in cards]
@@ -474,9 +480,7 @@ def _evaluate_set_targets(
         )
 
     # Two Pair target
-    pair_candidates = [
-        indices[:2] for _, indices in counts if len(indices) >= 2
-    ]
+    pair_candidates = [indices[:2] for _, indices in counts if len(indices) >= 2]
     if len(pair_candidates) >= 2:
         used = pair_candidates[0] + pair_candidates[1]
         completeness = min(len(used) / 4.0, 1.0)
@@ -503,12 +507,9 @@ def _consider_target(
     if rank_value is None:
         return current_target
 
-    if (
-        rank_value > current_target.rank_value
-        or (
-            rank_value == current_target.rank_value
-            and completeness > current_target.completeness
-        )
+    if rank_value > current_target.rank_value or (
+        rank_value == current_target.rank_value
+        and completeness > current_target.completeness
     ):
         return HandTarget(hand_name, rank_value, completeness, indices)
 

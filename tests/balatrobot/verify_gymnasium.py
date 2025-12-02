@@ -10,6 +10,7 @@ print("=" * 60)
 print("\n[1/5] Testing import...")
 try:
     from balatrobot import BalatroEnv
+
     print("✓ BalatroEnv imported successfully")
 except ImportError as e:
     print(f"✗ Failed to import: {e}")
