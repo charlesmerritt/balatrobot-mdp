@@ -7,9 +7,9 @@ import numpy as np
 from gymnasium import spaces
 
 from .client import BalatroClient
+from .deck import get_standard_deck_vector
 from .enums import Decks, Stakes, State
 from .exceptions import BalatroError
-from .deck import get_standard_deck_vector
 from .hand_evaluator import get_best_hand_info
 from .models import G
 
