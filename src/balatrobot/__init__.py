@@ -2,11 +2,14 @@
 
 from .client import BalatroClient
 from .enums import Actions, Decks, Stakes, State
+from .env import BalatroEnv
 from .exceptions import BalatroError
 from .models import G
 
 __version__ = "0.7.5"
 __all__ = [
+    "__version__",
+    "BalatroEnv",
     # Main client
     "BalatroClient",
     # Enums
