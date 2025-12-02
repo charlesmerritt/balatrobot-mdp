@@ -78,17 +78,17 @@ The MDP follows the game's natural state transitions:
 
 The observation is a dictionary with the following keys:
 
-| Key | Type | Range | Description |
-|-----|------|-------|-------------|
-| `state` | float32[1] | [0, 27] | Current game state enum value |
-| `chips` | float32[1] | [0, ∞) | Current chip count |
-| `dollars` | float32[1] | [0, ∞) | Current money amount |
-| `round` | float32[1] | [0, ∞) | Current round number |
-| `hands_left` | float32[1] | [0, 10] | Hands remaining in round |
-| `discards_left` | float32[1] | [0, 10] | Discards remaining in round |
-| `hand_size` | float32[1] | [0, 20] | Number of cards in hand |
-| `joker_count` | float32[1] | [0, 10] | Number of active jokers |
-| `deck_vector` | float32[52] | {0, 1} | Fixed 52-card composition (1 per card) |
+| Key             | Type        | Range   | Description                            |
+| --------------- | ----------- | ------- | -------------------------------------- |
+| `state`         | float32[1]  | [0, 27] | Current game state enum value          |
+| `chips`         | float32[1]  | [0, ∞)  | Current chip count                     |
+| `dollars`       | float32[1]  | [0, ∞)  | Current money amount                   |
+| `round`         | float32[1]  | [0, ∞)  | Current round number                   |
+| `hands_left`    | float32[1]  | [0, 10] | Hands remaining in round               |
+| `discards_left` | float32[1]  | [0, 10] | Discards remaining in round            |
+| `hand_size`     | float32[1]  | [0, 20] | Number of cards in hand                |
+| `joker_count`   | float32[1]  | [0, 10] | Number of active jokers                |
+| `deck_vector`   | float32[52] | {0, 1}  | Fixed 52-card composition (1 per card) |
 
 ### Action Space & Policies
 
