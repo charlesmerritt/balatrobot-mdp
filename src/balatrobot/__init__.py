@@ -6,7 +6,7 @@ from .env import BalatroEnv
 from .exceptions import BalatroError
 from .models import G
 
-__version__ = "0.7.5"
+__version__ = "0.6.0"
 __all__ = [
     "__version__",
     "BalatroEnv",
