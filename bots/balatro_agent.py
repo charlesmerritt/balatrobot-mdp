@@ -2,6 +2,8 @@ from collections import defaultdict
 import gymnasium as gym
 import numpy as np
 from typing import Any
+from typing import cast
+from gymnasium.spaces import Discrete
 
 from balatrobot.env import BalatroEnv
 from balatrobot.enums import Decks, Stakes
@@ -23,7 +25,7 @@ def obs_to_tuple(obs: dict) -> tuple:
 class BalatroAgent:
     def __init__(
         self,
-        env: gym.Env,
+        env: BalatroEnv,
         learning_rate: float,
         initial_epsilon: float,
         epsilon_decay: float,
@@ -43,8 +45,13 @@ class BalatroAgent:
             discount_factor: The discount factor for computing the Q-value
         """
 
+        assert isinstance(env.action_space, Discrete), \
+            "BalatroAgent requires a discrete action space"
+
         self.env = env
-        self.q_values = defaultdict(lambda: np.zeros(env.action_space.n))
+        self.q_values = defaultdict(
+            lambda: np.zeros(cast(Discrete, env.action_space).n)
+        )
 
         self.lr = learning_rate
         self.discount_factor = discount_factor
@@ -96,7 +103,7 @@ class BalatroAgent:
 # TRAIN THE AGENT
 # hyperparameters
 learning_rate = 0.01
-n_episodes = 100 # 100_000
+n_episodes = 10 # 100_000
 start_epsilon = 1.0
 epsilon_decay = start_epsilon / (n_episodes / 2)  # reduce the exploration over time
 final_epsilon = 0.1
@@ -116,7 +123,7 @@ env = BalatroEnv(
         port=12346,
         deck=Decks.RED.value,
         stake=Stakes.WHITE.value,
-        seed=generate_random_string(7),
+        seed=generate_random_string(length=7),
         max_steps=500,
         render_mode="human",
     )
