@@ -214,7 +214,7 @@ class BalatroEnv(gym.Env):
         except BalatroError as e:
             # Penalize invalid card selections
             if "Invalid number of cards" in str(e):
-                self.last_error_penalty = -10.0
+                self.last_error_penalty = -1.0
 
             # Recovery: just refresh game state
             resp = self.client.send_message("get_game_state", {})
