@@ -46,6 +46,8 @@ class BalatroEnv(gym.Env):
         self.game_seed = seed
         self.max_steps = max_steps
         self.render_mode = render_mode
+        self.last_error_penalty = 0.0
+        self.prev_chips = 0
 
         self.client: Optional[BalatroClient] = None
         self.current_state: Optional[G] = None
@@ -209,7 +211,11 @@ class BalatroEnv(gym.Env):
                 resp = self.client.send_message("get_game_state", {})
                 self.current_state = G(**resp)
 
-        except BalatroError:
+        except BalatroError as e:
+            # Penalize invalid card selections
+            if "Invalid number of cards" in str(e):
+                self.last_error_penalty = -10.0
+
             # Recovery: just refresh game state
             resp = self.client.send_message("get_game_state", {})
             self.current_state = G(**resp)
@@ -232,9 +238,23 @@ class BalatroEnv(gym.Env):
     # REWARD + TERMINATION
     # ============================================================
     def _compute_reward(self):
+        reward = 0.0
+
         if not self.current_state or not self.current_state.game:
-            return 0.0
-        return float(self.current_state.game.chips)
+            return reward
+
+        # Add penalty if one is set
+        reward += self.last_error_penalty
+        self.last_error_penalty = 0.0
+
+        # Compute "new chips"
+        total_chips = float(self.current_state.game.chips)
+        new_chips = total_chips - self.prev_chips
+        self.prev_chips = total_chips
+
+        reward += new_chips
+
+        return float(reward)
 
     def _terminal(self):
         if not self.current_state:
