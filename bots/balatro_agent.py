@@ -107,7 +107,7 @@ class BalatroAgent:
 # TRAIN THE AGENT
 # hyperparameters
 learning_rate = 0.01
-n_episodes = 10000 # 100_000
+n_episodes = 1000 # 100_000
 start_epsilon = 1.0
 epsilon_decay = start_epsilon / (n_episodes / 2)  # reduce the exploration over time
 final_epsilon = 0.1
@@ -150,6 +150,8 @@ if reload_old_q_table:
         lambda: np.zeros(cast(Discrete, agent.env.action_space).n),
         q
     )
+    agent.epsilon = 0
+    n_episodes = 1
 
 from tqdm import tqdm
 
@@ -201,8 +203,9 @@ with open("run_data/one_seed.csv", "w", newline="") as f:
 
 # Save the Q table to file
 import pickle
-with open("saved_tables/qtable_final.pkl", "wb") as f:
-    pickle.dump(dict(agent.q_values), f)
+if not reload_old_q_table:
+    with open("saved_tables/qtable_final.pkl", "wb") as f:
+        pickle.dump(dict(agent.q_values), f)
 
 # Print the seed
 print(env.game_seed)
