@@ -136,8 +136,20 @@ agent = BalatroAgent(
     final_epsilon=final_epsilon,
 )
 
+# Optional: Reload q table from old run
+import pickle
+reload_old_q_table = False # *** Change me ***
+if reload_old_q_table:
+    with open("saved_tables/qtable_final.pkl", "rb") as f:
+        q = pickle.load(f)
+    agent.q_values = defaultdict(
+        lambda: np.zeros(cast(Discrete, agent.env.action_space).n),
+        q
+    )
+
 from tqdm import tqdm
 
+episode_rewards = []
 
 for episode in tqdm(range(n_episodes)):
     obs, info = env.reset()  # reset returns obs and info
@@ -157,8 +169,33 @@ for episode in tqdm(range(n_episodes)):
         obs = next_obs
         total_reward += reward
 
+    # Save the results from each run
+    episode_rewards.append(total_reward)
+
     # optional: print episode stats every 1000 episodes
-    if (episode + 1) % 1 == 0:
-        print(f"Episode {episode+1}: total_reward={total_reward:.2f}, epsilon={agent.epsilon:.3f}")
+    #if (episode + 1) % 1 == 0:
+    #    print(f"Episode {episode+1}: total_reward={total_reward:.2f}, epsilon={agent.epsilon:.3f}")
 
     agent.decay_epsilon()
+
+# Plot the agent's reward over time
+import matplotlib.pyplot as plt
+
+plt.plot(episode_rewards)
+plt.xlabel("Episode")
+plt.ylabel("Total Reward")
+plt.title("Agent Training Performance")
+plt.show()
+
+# Save rewards to CSV
+import csv
+with open("run_data/one_seed.csv", "w", newline="") as f:
+    writer = csv.writer(f)
+    writer.writerow(["episode", "reward"])
+    for i, r in enumerate(episode_rewards):
+        writer.writerow([i + 1, r])
+
+# Save the Q table to file
+import pickle
+with open("saved_tables/qtable_final.pkl", "wb") as f:
+    pickle.dump(dict(agent.q_values), f)
