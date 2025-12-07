@@ -251,7 +251,6 @@ class BalatroEnv(gym.Env):
         total_chips = float(self.current_state.game.chips)
         new_chips = total_chips - self.prev_chips
         self.prev_chips = total_chips
-
         reward += new_chips
 
         return float(reward)
