@@ -8,6 +8,10 @@ from gymnasium.spaces import Discrete
 from balatrobot.env import BalatroEnv
 from balatrobot.enums import Decks, Stakes
 
+"""
+In order to see how a trained agent performed, change the
+"""
+
 def obs_to_tuple(obs: dict) -> tuple:
         """
         Convert observation dict to a hashable tuple for Q-table indexing.
@@ -103,7 +107,7 @@ class BalatroAgent:
 # TRAIN THE AGENT
 # hyperparameters
 learning_rate = 0.01
-n_episodes = 10 # 100_000
+n_episodes = 10000 # 100_000
 start_epsilon = 1.0
 epsilon_decay = start_epsilon / (n_episodes / 2)  # reduce the exploration over time
 final_epsilon = 0.1
@@ -199,3 +203,6 @@ with open("run_data/one_seed.csv", "w", newline="") as f:
 import pickle
 with open("saved_tables/qtable_final.pkl", "wb") as f:
     pickle.dump(dict(agent.q_values), f)
+
+# Print the seed
+print(env.game_seed)
