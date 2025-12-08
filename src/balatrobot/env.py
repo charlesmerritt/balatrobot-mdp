@@ -258,8 +258,9 @@ class BalatroEnv(gym.Env):
             if new_chips < 0:
                 new_chips = 0
 
-        reward += total_chips # Changed to total so that rewards are not too sparse.
+            reward += total_chips # Changed to total so that rewards are not too sparse.
 
+        print(reward)
         return float(reward)
 
     def _terminal(self):
