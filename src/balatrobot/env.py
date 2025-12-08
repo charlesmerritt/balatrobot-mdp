@@ -247,15 +247,16 @@ class BalatroEnv(gym.Env):
             reward -= 100.0
 
         # Add penalty if one is set
-        reward += self.last_error_penalty
-        self.last_error_penalty = 0.0
-
-        # Compute "new chips"
-        total_chips = float(self.current_state.game.chips)
-        new_chips = total_chips - self.prev_chips
-        self.prev_chips = total_chips
-        if new_chips < 0:
-            new_chips = 0
+        if self.last_error_penalty > 0:
+            reward += self.last_error_penalty
+            self.last_error_penalty = 0.0
+        else:
+            # Compute "new chips"
+            total_chips = float(self.current_state.game.chips)
+            new_chips = total_chips - self.prev_chips
+            self.prev_chips = total_chips
+            if new_chips < 0:
+                new_chips = 0
 
         reward += total_chips # Changed to total so that rewards are not too sparse.
 
