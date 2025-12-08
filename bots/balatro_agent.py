@@ -153,7 +153,7 @@ if reload_old_q_table:
     )
     agent.epsilon = 0
     n_episodes = 1
-    env.game_seed = "qI1Bnvn7"
+    env.game_seed = "l324WIF"
 
 from tqdm import tqdm
 
@@ -170,7 +170,8 @@ for episode in tqdm(range(n_episodes)):
         next_obs, reward, terminated, truncated, info = env.step(action)
 
         # update the agent
-        agent.update(obs, action, reward, terminated, next_obs)
+        if not reload_old_q_table:
+            agent.update(obs, action, reward, terminated, next_obs)
 
         # update if the environment is done
         done = terminated or truncated
@@ -197,11 +198,12 @@ plt.show()
 
 # Save rewards to CSV
 import csv
-with open("run_data/one_seed.csv", "w", newline="") as f:
-    writer = csv.writer(f)
-    writer.writerow(["episode", "reward"])
-    for i, r in enumerate(episode_rewards):
-        writer.writerow([i + 1, r])
+if not reload_old_q_table:
+    with open("run_data/one_seed.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["episode", "reward"])
+        for i, r in enumerate(episode_rewards):
+            writer.writerow([i + 1, r])
 
 # Save the Q table to file
 import pickle
