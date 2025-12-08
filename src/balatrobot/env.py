@@ -251,7 +251,7 @@ class BalatroEnv(gym.Env):
 
         # Penalize losing the round
         if self.current_state.state == State.GAME_OVER.value:
-            reward -= 50.0
+            reward -= 100.0
 
         # Add penalty if one is set
         reward += self.last_error_penalty
