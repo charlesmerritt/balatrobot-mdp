@@ -166,10 +166,12 @@ class BalatroEnv(gym.Env):
                 {"deck": self.deck, "stake": self.stake, "seed": self.game_seed},
             )
             self.current_state = G(**response)
+
         except BalatroError as e:
             logger.error("Failed to start run: %s", e)
             self.current_state = None
 
+        self.prev_chips = 0
         return self._get_obs(), self._get_info()
 
     # ============================================================
@@ -295,6 +297,8 @@ class BalatroEnv(gym.Env):
         # 3) Penalties from errors
         reward += self.last_error_penalty
         self.last_error_penalty = 0.0
+
+        """
         print(
             "DEBUG REWARD",
             "chips=", game.chips,
@@ -302,6 +306,8 @@ class BalatroEnv(gym.Env):
             "delta=", delta_chips,
             "mult=", cr.current_hand.mult if cr and cr.current_hand else None,
         )
+        """
+
         return float(reward)
 
     def _terminal(self):
