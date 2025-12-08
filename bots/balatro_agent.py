@@ -106,10 +106,10 @@ class BalatroAgent:
 
 # TRAIN THE AGENT
 # hyperparameters
-learning_rate = 0.01
+learning_rate = 0.1
 n_episodes = 1000 # 100_000
 start_epsilon = 1.0
-epsilon_decay = start_epsilon / (n_episodes / 20)  # reduce the exploration over time
+epsilon_decay = start_epsilon / (n_episodes / 1.01)  # reduce the exploration over time
 final_epsilon = 0.1
 
 import random
@@ -163,7 +163,7 @@ for episode in tqdm(range(n_episodes)):
     obs, info = env.reset()  # reset returns obs and info
     done = False
     total_reward = 0.0
-    env.game_seed = generate_random_string(length=7) # Random seed each iteration
+    #env.game_seed = generate_random_string(length=7) # Random seed each iteration
 
     # play one episode
     while not done:
