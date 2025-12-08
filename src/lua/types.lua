@@ -161,8 +161,15 @@
 ---@field boss boolean Whether the last blind was a boss
 ---@field name string Name of the last blind
 
+-- Current hand info (G.GAME.current_round.current_hand)
+---@class GGameCurrentHand
+---@field mult number Current hand multiplier after jokers
+---@field chips number Chips for the current hand
+---@field handname string Name of the current poker hand
+
 -- Current round info (G.GAME.current_round)
 ---@class GGameCurrentRound
+---@field current_hand GGameCurrentHand Current hand information
 ---@field discards_left number Number of discards remaining
 ---@field discards_used number Number of discards used
 ---@field hands_left number Number of hands remaining

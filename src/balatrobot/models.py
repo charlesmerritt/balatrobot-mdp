@@ -76,6 +76,36 @@ class GGameLastBlind(BalatroBaseModel):
     name: str = Field("", description="Name of the last blind")
 
 
+class GBlindInfo(BalatroBaseModel):
+    name: str = Field("", description="Blind name")
+    score: int = Field(0, description="Target chip score for this blind")
+    status: str = Field("", description="Status (Upcoming, Current, Defeated, etc.)")
+    effect: str = Field("", description="Blind effect description")
+    tag_name: str = Field("", description="Attached tag name, if any")
+    tag_effect: str = Field("", description="Attached tag effect, if any")
+
+
+class GBlinds(BalatroBaseModel):
+    small: GBlindInfo = Field(
+        default_factory=GBlindInfo,  # type: ignore[arg-type]
+        description="Small blind info",
+    )
+    big: GBlindInfo = Field(
+        default_factory=GBlindInfo,  # type: ignore[arg-type]
+        description="Big blind info",
+    )
+    boss: GBlindInfo = Field(
+        default_factory=GBlindInfo,  # type: ignore[arg-type]
+        description="Boss blind info",
+    )
+
+
+class GGameCurrentHand(BalatroBaseModel):
+    mult: int = Field(0, description="Current hand multiplier after jokers")
+    handname: str = Field("", description="Name of the current poker hand")
+    # chips: int = Field(0, description="Chips for the current hand")
+
+
 class GGameCurrentRound(BalatroBaseModel):
     """Current round info matching GGameCurrentRound in Lua types."""
 
@@ -85,6 +115,9 @@ class GGameCurrentRound(BalatroBaseModel):
     hands_played: int = Field(0, description="Number of hands played")
     voucher: dict[str, Any] = Field(
         default_factory=dict, description="Vouchers for this round"
+    )
+    current_hand: GGameCurrentHand | None = Field(
+        None, description="Current hand scoring info"
     )
 
     @field_validator("voucher", mode="before")
@@ -341,6 +374,7 @@ class G(BalatroBaseModel):
     jokers: list[GJokersCards] | dict[str, Any] = Field(
         default_factory=list, description="Jokers structure (can be list or dict)"
     )
+    blinds: GBlinds | None = Field(None, description="Small/Big/Boss blind info")
 
     @field_validator("hand", mode="before")
     @classmethod

@@ -10,3 +10,4 @@ dump
 coverage.xml
 .coverage
 balatro
+.venv/

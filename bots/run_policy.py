@@ -80,7 +80,7 @@ def run_policy(args: argparse.Namespace) -> None:
         seed=seed,
         max_steps=args.max_steps,
         render_mode=render_mode,
-        policy=args.policy,
+        # policy=args.policy,
     )
 
     total_reward = 0.0

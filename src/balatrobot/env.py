@@ -1,16 +1,27 @@
 import logging
-from tokenize import String
 from typing import Any, Optional
 
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
+
 from .client import BalatroClient
 from .deck import get_standard_deck_vector
 from .enums import Decks, Stakes, State
 from .exceptions import BalatroError
 from .models import G
+from .utils import (
+    joker_id_from_card,
+    HANDNAME_TO_ID,
+    RANK_TO_ID,
+    SUIT_TO_ID,
+    JOKER_KEY_TO_ID,
+    JOKER_UNKNOWN_ID,
+    MAX_HAND_SIZE,
+    MAX_JOKERS,
+)
+
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +39,7 @@ class BalatroEnv(gym.Env):
         deck: str = Decks.RED.value,
         stake: int = Stakes.WHITE.value,
         seed: Optional[str] = None,
-        max_steps: int = 2000,
+        max_steps: int = 20000,
         render_mode: Optional[str] = None,
     ):
         super().__init__()
@@ -50,15 +61,22 @@ class BalatroEnv(gym.Env):
         self.steps = 0
         self.episode_reward = 0.0
 
-        # Deck vector (static feature)
+        # -----------------------------
+        # DEBUGGING
+        # -----------------------------
+        self.policy = None
+
+        # Deck vector (static feature: default 52 card deck)
         self.deck_vector = np.array(get_standard_deck_vector(), dtype=np.float32)
 
         # -----------------------------
         # DEFINE ACTION SPACE (GLOBAL)
         # -----------------------------
-        # Max combinations of 5 cards = 32, + pass = 33
-        MAX_HAND_ACTIONS = 33
-        MAX_SHOP_ACTIONS = 10     # heuristic
+        # Max combinations of up to 5 cards from a hand size of 8, 8 choose 5! = 218, *2 for play or discard. +2 for planet cards = 438 each hand.
+        MAX_HAND_ACTIONS = 438
+        MAX_SHOP_ACTIONS = 44 # next round, reroll, buy item 1, buy item 2, buy voucher, buy pack 1, buy pack 2 + pack permutations
+        # Pack permutations: There are standard, jumbo, and mega packs. Mega: 5 permute 2! + 2 skips = 27, Jumbo: 5 permute 1 + 1 skip = 6, Standard: 3 permute 1 + 1 skip = 4, total 37 from pack selection.
+        # 37 (booster packs) + 7 base shop choices = 44 each reroll.
         self.action_space = spaces.Discrete(MAX_HAND_ACTIONS + MAX_SHOP_ACTIONS)
 
         # -----------------------------
@@ -75,6 +93,20 @@ class BalatroEnv(gym.Env):
                 "hand_size": spaces.Box(0, 20, shape=(1,), dtype=np.float32),
                 "joker_count": spaces.Box(0, 10, shape=(1,), dtype=np.float32),
                 "deck_vector": spaces.Box(0, 1, (52,), dtype=np.float32),
+                "current_hand_type": spaces.Discrete(len(HANDNAME_TO_ID)),
+                "hand_cards": spaces.Box(
+                    low=0,
+                    high=13,  # ranks 0-12, suits 0-3 (all covered by 0-13)
+                    shape=(MAX_HAND_SIZE, 2),
+                    dtype=np.float32,
+                ),
+                "blind_target": spaces.Box(0, np.inf, shape=(1,), dtype=np.float32),
+                "joker_ids": spaces.Box(
+                    low=0,
+                    high=np.inf,
+                    shape=(MAX_JOKERS,),
+                    dtype=np.float32,
+                ),
             }
         )
 
@@ -145,6 +177,11 @@ class BalatroEnv(gym.Env):
     # ============================================================
     def step(self, action: int):
         self.steps += 1
+
+        if self.current_state is not None:
+            self.prev_state = self.current_state.state
+        else:
+            self.prev_state = None
 
         self._apply_action(action)
         reward = self._compute_reward()
@@ -238,31 +275,33 @@ class BalatroEnv(gym.Env):
         reward = 0.0
 
         if not self.current_state or not self.current_state.game:
+            print("ERROR: No game state available")
             return reward
 
-        # Add reward when round is completed
-        if self.current_state.state == State.ROUND_EVAL.value and self.prev_state != State.ROUND_EVAL.value:
-            reward += 100.0
-        self.prev_state = self.current_state.state
+        game = self.current_state.game
+        cr = game.current_round
 
-        # Penalize losing the round
-        if self.current_state.state == State.GAME_OVER.value:
-            reward -= 100.0
+        # 1) Primary signal: change in total chips
+        # Chips only increase when a hand finishes scoring.
+        delta_chips = float(game.chips) - float(self.prev_chips)
+        if delta_chips > 0:
+            reward += delta_chips
+        self.prev_chips = float(game.chips)
 
-        # Add penalty if one is set
-        if self.last_error_penalty != 0:
-            reward += self.last_error_penalty
-            self.last_error_penalty = 0.0
-        else:
-            # Compute "new chips"
-            total_chips = float(self.current_state.game.chips)
-            new_chips = total_chips - self.prev_chips
-            self.prev_chips = total_chips
-            if new_chips < 0:
-                new_chips = 0
+        # 2) Optional mult-based bonus (keep, but don't rely on state gate)
+        if cr and cr.current_hand and cr.current_hand.mult and cr.current_hand.mult > 0:
+            reward += float(cr.current_hand.mult)
 
-            reward += total_chips # Changed to total so that rewards are not too sparse.
-
+        # 3) Penalties from errors
+        reward += self.last_error_penalty
+        self.last_error_penalty = 0.0
+        print(
+            "DEBUG REWARD",
+            "chips=", game.chips,
+            "prev_chips=", self.prev_chips,
+            "delta=", delta_chips,
+            "mult=", cr.current_hand.mult if cr and cr.current_hand else None,
+        )
         return float(reward)
 
     def _terminal(self):
@@ -296,6 +335,49 @@ class BalatroEnv(gym.Env):
 
         game = self.current_state.game
         hand = self.current_state.hand
+        cr = game.current_round
+
+        hand_type_id = 0
+        if cr and cr.current_hand and cr.current_hand.handname:
+            hand_type_id = HANDNAME_TO_ID.get(cr.current_hand.handname, 0)
+
+        # Build hand_cards array: shape (MAX_HAND_SIZE, 2)
+        hand_cards_arr = np.zeros((MAX_HAND_SIZE, 2), dtype=np.float32)
+        if hand and hand.cards:
+            for i, card in enumerate(hand.cards[:MAX_HAND_SIZE]):
+                base = getattr(card, "base", None)
+                if not base:
+                    continue
+                suit = getattr(base, "suit", "")
+                value = getattr(base, "value", "")
+                rank_id = RANK_TO_ID.get(str(value), 0)
+                suit_id = SUIT_TO_ID.get(str(suit), 0)
+                hand_cards_arr[i, 0] = rank_id
+                hand_cards_arr[i, 1] = suit_id
+
+        # Blind target
+        blind_target = 0.0
+        blinds = getattr(self.current_state, "blinds", None)
+        if blinds and game.blind_on_deck:
+            blind_name = game.blind_on_deck  # "Small", "Big", or boss key/name
+            key = blind_name.lower()
+            blind_info = getattr(blinds, key, None)
+            if blind_info and blind_info.score is not None:
+                blind_target = float(blind_info.score)
+
+        # Joker IDs
+        jokers = getattr(self.current_state, "jokers", None)
+        joker_ids_arr = np.zeros((MAX_JOKERS,), dtype=np.float32)
+
+        if isinstance(jokers, dict) and "cards" in jokers:
+            cards = jokers["cards"]
+        elif jokers is not None and hasattr(jokers, "cards"):
+            cards = jokers.cards
+        else:
+            cards = []
+
+        for i, card in enumerate(list(cards)[:MAX_JOKERS]):
+            joker_ids_arr[i] = float(joker_id_from_card(card))
 
         return {
             "state": np.array([self.current_state.state], dtype=np.float32),
@@ -309,6 +391,10 @@ class BalatroEnv(gym.Env):
             "hand_size": np.array([float(hand.config.card_count)] if hand and hand.config else [0.0]),
             "joker_count": np.array([len(self.current_state.jokers)], dtype=np.float32),
             "deck_vector": self.deck_vector,
+            "current_hand_type": np.array([float(hand_type_id)], dtype=np.float32),
+            "hand_cards": hand_cards_arr,
+            "blind_target": np.array([blind_target], dtype=np.float32),
+            "joker_ids": joker_ids_arr,
         }
 
     def _get_info(self):

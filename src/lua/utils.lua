@@ -134,6 +134,14 @@ function utils.get_game_state()
         --   "mult": int, Default 0
         --   "mult_text": str, Default "0"
         -- },
+        current_hand = {
+          mult = (G.GAME.current_round.current_hand
+            and G.GAME.current_round.current_hand.mult)
+            or 0,
+          handname = (G.GAME.current_round.current_hand
+            and G.GAME.current_round.current_hand.handname)
+            or "",
+        },
 
         discards_left = G.GAME.current_round.discards_left, -- Number of discards left for this round
         discards_used = G.GAME.current_round.discards_used, -- int (default 0) Number of discard used in this round
@@ -364,7 +372,7 @@ function utils.get_game_state()
         seal = card.seal, -- str. Seal type: "Red", "Blue", "Gold", "Purple" or nil
         edition = card.edition, -- table. Edition data: {type="foil/holo/polychrome/negative", chips=X, mult=X, x_mult=X} or nil
         base = {
-          -- These should be the valude for the original base card
+          -- These should be the value for the original base card
           -- without any modifications
           id = card.base.id, -- ??
           name = card.base.name,
