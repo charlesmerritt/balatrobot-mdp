@@ -210,6 +210,9 @@ class BalatroEnv(gym.Env):
             if "Invalid number of cards" in str(e):
                 self.last_error_penalty = -1.0
 
+            # Penalize any error a little bit
+            self.last_error_penalty += -1.0
+
             # Recovery: just refresh game state
             resp = self.client.send_message("get_game_state", {})
             self.current_state = G(**resp)
@@ -247,7 +250,7 @@ class BalatroEnv(gym.Env):
             reward -= 100.0
 
         # Add penalty if one is set
-        if self.last_error_penalty > 0:
+        if self.last_error_penalty != 0:
             reward += self.last_error_penalty
             self.last_error_penalty = 0.0
         else:
