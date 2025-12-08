@@ -51,6 +51,7 @@ class BalatroEnv(gym.Env):
 
         self.client: Optional[BalatroClient] = None
         self.current_state: Optional[G] = None
+        self.prev_state: Optional[int] = None
 
         # Episode tracking
         self.steps = 0
@@ -243,6 +244,15 @@ class BalatroEnv(gym.Env):
         if not self.current_state or not self.current_state.game:
             return reward
 
+        # Add reward when round is completed
+        if self.current_state.state == State.ROUND_EVAL.value and self.prev_state != State.ROUND_EVAL.value:
+            reward += 100.0
+        self.prev_state = self.current_state.state
+
+        # Penalize losing the round
+        if self.current_state.state == State.GAME_OVER.value:
+            reward -= 50.0
+
         # Add penalty if one is set
         reward += self.last_error_penalty
         self.last_error_penalty = 0.0
@@ -251,6 +261,8 @@ class BalatroEnv(gym.Env):
         total_chips = float(self.current_state.game.chips)
         new_chips = total_chips - self.prev_chips
         self.prev_chips = total_chips
+        if new_chips < 0:
+            new_chips = 0
         reward += new_chips
 
         return float(reward)
