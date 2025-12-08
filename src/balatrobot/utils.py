@@ -1,12 +1,15 @@
 import numpy as np
 from typing import Any, Optional
 from .deck import SUITS, RANKS
+from .hand_evaluator import evaluate_hand, get_best_hand_target, HAND_RANKS
 
 
 # Design decision, use Banner to limit jokers and vouchers that would alter this.
 MAX_HAND_SIZE = 8
 # Design decision, use Banner to limit negatives that would alter this.
 MAX_JOKERS = 5
+
+MAX_HAND_RANK_VALUE = max(HAND_RANKS.values())
 
 HANDNAME_TO_ID = {
     "High Card": 0,
@@ -147,3 +150,46 @@ def update_deck_vector_for_shop_buy(deck_vector: np.ndarray, shop_cards: Any, in
 
     if 0 <= idx < deck_vector.shape[0]:
         deck_vector[idx] += 1.0
+
+def to_evaluator_cards_from_hand(hand: Any) -> list[dict[str, Any]]:
+    """Convert a Balatro hand object into the dict format expected by hand_evaluator.
+
+    Each card becomes: {"base": {"value": <rank_str>, "suit": <suit_str>}}.
+    """
+    cards: list[dict[str, Any]] = []
+    if not hand or not getattr(hand, "cards", None):
+        return cards
+
+    for card in hand.cards:
+        base = getattr(card, "base", None)
+        if not base:
+            continue
+        value = getattr(base, "value", None)
+        suit = getattr(base, "suit", None)
+        if value is None or suit is None:
+            continue
+        cards.append({"base": {"value": str(value), "suit": str(suit)}})
+    return cards
+
+
+def eval_hand_features_from_hand(hand: Any) -> tuple[int, int, float]:
+    """Return evaluator-based features (hand_type_id, target_rank, target_completeness).
+
+    - hand_type_id: integer ID from HANDNAME_TO_ID for the evaluated 5-card hand
+    - target_rank: rank_value of the best near-complete hand (HandTarget.rank_value)
+    - target_completeness: HandTarget.completeness in [0, 1]
+    """
+    cards = to_evaluator_cards_from_hand(hand)
+    if not cards:
+        return 0, 0, 0.0
+
+    # Primary hand type from evaluator
+    hand_name, _rank_value = evaluate_hand(cards)
+    hand_type_id = HANDNAME_TO_ID.get(hand_name, 0)
+
+    # Target info (near-complete strongest hand)
+    target = get_best_hand_target(cards)
+    target_rank = int(target.rank_value)
+    target_completeness = float(target.completeness)
+
+    return hand_type_id, target_rank, target_completeness

@@ -5,7 +5,7 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
-
+from balatrobot.hand_evaluator import evaluate_hand
 from .client import BalatroClient
 from .deck import get_standard_deck_vector
 from .enums import Decks, Stakes, State
@@ -16,10 +16,10 @@ from .utils import (
     HANDNAME_TO_ID,
     RANK_TO_ID,
     SUIT_TO_ID,
-    JOKER_KEY_TO_ID,
-    JOKER_UNKNOWN_ID,
     MAX_HAND_SIZE,
     MAX_JOKERS,
+    eval_hand_features_from_hand,
+    MAX_HAND_RANK_VALUE,
 )
 
 
@@ -83,32 +83,46 @@ class BalatroEnv(gym.Env):
         # DEFINE OBSERVATION SPACE
         # -----------------------------
         self.observation_space = spaces.Dict(
-            {
-                "state": spaces.Discrete(28),
-                "chips": spaces.Box(0, np.inf, shape=(1,), dtype=np.float32),
-                "dollars": spaces.Box(0, np.inf, shape=(1,), dtype=np.float32),
-                "round": spaces.Box(0, np.inf, shape=(1,), dtype=np.float32),
-                "hands_left": spaces.Box(0, 10, shape=(1,), dtype=np.float32),
-                "discards_left": spaces.Box(0, 10, shape=(1,), dtype=np.float32),
-                "hand_size": spaces.Box(0, 20, shape=(1,), dtype=np.float32),
-                "joker_count": spaces.Box(0, 10, shape=(1,), dtype=np.float32),
-                "deck_vector": spaces.Box(0, 1, (52,), dtype=np.float32),
-                "current_hand_type": spaces.Discrete(len(HANDNAME_TO_ID)),
-                "hand_cards": spaces.Box(
-                    low=0,
-                    high=13,  # ranks 0-12, suits 0-3 (all covered by 0-13)
-                    shape=(MAX_HAND_SIZE, 2),
-                    dtype=np.float32,
-                ),
-                "blind_target": spaces.Box(0, np.inf, shape=(1,), dtype=np.float32),
-                "joker_ids": spaces.Box(
-                    low=0,
-                    high=np.inf,
-                    shape=(MAX_JOKERS,),
-                    dtype=np.float32,
-                ),
-            }
-        )
+        {
+        "state": spaces.Discrete(28),
+        "chips": spaces.Box(0, np.inf, shape=(1,), dtype=np.float32),
+        "dollars": spaces.Box(0, np.inf, shape=(1,), dtype=np.float32),
+        "round": spaces.Box(0, np.inf, shape=(1,), dtype=np.float32),
+        "hands_left": spaces.Box(0, 10, shape=(1,), dtype=np.float32),
+        "discards_left": spaces.Box(0, 10, shape=(1,), dtype=np.float32),
+        "hand_size": spaces.Box(0, 20, shape=(1,), dtype=np.float32),
+        "joker_count": spaces.Box(0, 10, shape=(1,), dtype=np.float32),
+        "deck_vector": spaces.Box(0, 1, (52,), dtype=np.float32),
+        "current_hand_type": spaces.Discrete(len(HANDNAME_TO_ID)),  # Lua-based
+        "hand_cards": spaces.Box(
+            low=0,
+            high=13,
+            shape=(MAX_HAND_SIZE, 2),
+            dtype=np.float32,
+        ),
+        "blind_target": spaces.Box(0, np.inf, shape=(1,), dtype=np.float32),
+        "joker_ids": spaces.Box(
+            low=0,
+            high=np.inf,
+            shape=(MAX_JOKERS,),
+            dtype=np.float32,
+        ),
+        # Evaluator-based features
+        "eval_hand_type": spaces.Discrete(len(HANDNAME_TO_ID)),
+        "hand_target_rank": spaces.Box(
+            0,
+            MAX_HAND_RANK_VALUE,
+            shape=(1,),
+            dtype=np.float32,
+        ),
+        "hand_target_completeness": spaces.Box(
+            0.0,
+            1.0,
+            shape=(1,),
+            dtype=np.float32,
+        ),
+    }
+)
 
     def _hand_action_from_index(self, action: int) -> tuple[str, list[int]]:
         """
@@ -319,15 +333,22 @@ class BalatroEnv(gym.Env):
     def _get_obs(self):
         if self.current_state is None:
             return {
-                "state": np.array([State.MENU.value]),
-                "chips": np.array([0.0]),
-                "dollars": np.array([0.0]),
-                "round": np.array([0.0]),
-                "hands_left": np.array([0.0]),
-                "discards_left": np.array([0.0]),
-                "hand_size": np.array([0.0]),
-                "joker_count": np.array([0.0]),
+                "state": np.array([State.MENU.value], dtype=np.float32),
+                "chips": np.array([0.0], dtype=np.float32),
+                "dollars": np.array([0.0], dtype=np.float32),
+                "round": np.array([0.0], dtype=np.float32),
+                "hands_left": np.array([0.0], dtype=np.float32),
+                "discards_left": np.array([0.0], dtype=np.float32),
+                "hand_size": np.array([0.0], dtype=np.float32),
+                "joker_count": np.array([0.0], dtype=np.float32),
                 "deck_vector": self.deck_vector,
+                "current_hand_type": np.array([0.0], dtype=np.float32),
+                "hand_cards": np.zeros((MAX_HAND_SIZE, 2), dtype=np.float32),
+                "blind_target": np.array([0.0], dtype=np.float32),
+                "joker_ids": np.zeros((MAX_JOKERS,), dtype=np.float32),
+                "eval_hand_type": np.array([0.0], dtype=np.float32),
+                "hand_target_rank": np.array([0.0], dtype=np.float32),
+                "hand_target_completeness": np.array([0.0], dtype=np.float32),
             }
 
         assert self.current_state is not None
@@ -337,9 +358,10 @@ class BalatroEnv(gym.Env):
         hand = self.current_state.hand
         cr = game.current_round
 
-        hand_type_id = 0
+        # Lua-reported hand type
+        lua_hand_type_id = 0
         if cr and cr.current_hand and cr.current_hand.handname:
-            hand_type_id = HANDNAME_TO_ID.get(cr.current_hand.handname, 0)
+            lua_hand_type_id = HANDNAME_TO_ID.get(cr.current_hand.handname, 0)
 
         # Build hand_cards array: shape (MAX_HAND_SIZE, 2)
         hand_cards_arr = np.zeros((MAX_HAND_SIZE, 2), dtype=np.float32)
@@ -368,33 +390,51 @@ class BalatroEnv(gym.Env):
         # Joker IDs
         jokers = getattr(self.current_state, "jokers", None)
         joker_ids_arr = np.zeros((MAX_JOKERS,), dtype=np.float32)
-
         if isinstance(jokers, dict) and "cards" in jokers:
             cards = jokers["cards"]
         elif jokers is not None and hasattr(jokers, "cards"):
             cards = jokers.cards
         else:
             cards = []
-
         for i, card in enumerate(list(cards)[:MAX_JOKERS]):
             joker_ids_arr[i] = float(joker_id_from_card(card))
+
+        # Evaluator-based hand features
+        eval_hand_type_id, hand_target_rank, hand_target_completeness = \
+            eval_hand_features_from_hand(hand)
 
         return {
             "state": np.array([self.current_state.state], dtype=np.float32),
             "chips": np.array([float(game.chips)], dtype=np.float32),
             "dollars": np.array([float(game.dollars)], dtype=np.float32),
             "round": np.array([float(game.round)], dtype=np.float32),
-            "hands_left": np.array([float(game.current_round.hands_left)], dtype=np.float32)
-            if game.current_round else np.array([0.0]),
-            "discards_left": np.array([float(game.current_round.discards_left)], dtype=np.float32)
-            if game.current_round else np.array([0.0]),
-            "hand_size": np.array([float(hand.config.card_count)] if hand and hand.config else [0.0]),
-            "joker_count": np.array([len(self.current_state.jokers)], dtype=np.float32),
+            "hands_left": np.array(
+                [float(game.current_round.hands_left)], dtype=np.float32
+            )
+            if game.current_round
+            else np.array([0.0], dtype=np.float32),
+            "discards_left": np.array(
+                [float(game.current_round.discards_left)], dtype=np.float32
+            )
+            if game.current_round
+            else np.array([0.0], dtype=np.float32),
+            "hand_size": np.array(
+                [float(hand.config.card_count)] if hand and hand.config else [0.0],
+                dtype=np.float32,
+            ),
+            "joker_count": np.array(
+                [len(getattr(self.current_state, "jokers", []) or [])], dtype=np.float32
+            ),
             "deck_vector": self.deck_vector,
-            "current_hand_type": np.array([float(hand_type_id)], dtype=np.float32),
+            "current_hand_type": np.array([float(lua_hand_type_id)], dtype=np.float32),
             "hand_cards": hand_cards_arr,
             "blind_target": np.array([blind_target], dtype=np.float32),
             "joker_ids": joker_ids_arr,
+            "eval_hand_type": np.array([float(eval_hand_type_id)], dtype=np.float32),
+            "hand_target_rank": np.array([float(hand_target_rank)], dtype=np.float32),
+            "hand_target_completeness": np.array(
+                [float(hand_target_completeness)], dtype=np.float32
+            ),
         }
 
     def _get_info(self):
