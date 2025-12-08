@@ -107,7 +107,7 @@ class BalatroAgent:
 # TRAIN THE AGENT
 # hyperparameters
 learning_rate = 0.01
-n_episodes = 1000 # 100_000
+n_episodes = 500 # 100_000
 start_epsilon = 1.0
 epsilon_decay = start_epsilon / (n_episodes / 2)  # reduce the exploration over time
 final_epsilon = 0.1
@@ -152,8 +152,8 @@ if reload_old_q_table:
         q
     )
     agent.epsilon = 0
-    n_episodes = 1
-    env.game_seed = "l324WIF"
+    n_episodes = 2
+    env.game_seed = "PVqRpjc"
 
 from tqdm import tqdm
 

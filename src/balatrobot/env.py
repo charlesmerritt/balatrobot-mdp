@@ -260,7 +260,6 @@ class BalatroEnv(gym.Env):
 
             reward += total_chips # Changed to total so that rewards are not too sparse.
 
-        print(reward)
         return float(reward)
 
     def _terminal(self):
