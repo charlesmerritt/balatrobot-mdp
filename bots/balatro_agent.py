@@ -121,6 +121,7 @@ def generate_random_string(length):
     # Use random.choices to pick 'length' characters from the pool
     # and then join them into a single string
     random_string = ''.join(random.choices(characters, k=length))
+    print(random_string)
     return random_string
 
 env = BalatroEnv(
@@ -152,6 +153,7 @@ if reload_old_q_table:
     )
     agent.epsilon = 0
     n_episodes = 1
+    env.game_seed = "qI1Bnvn7"
 
 from tqdm import tqdm
 
