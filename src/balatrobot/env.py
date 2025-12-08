@@ -18,13 +18,6 @@ logger = logging.getLogger(__name__)
 class BalatroEnv(gym.Env):
     """
     Gymnasium environment wrapper for BalatroBot.
-
-    Follows Gymnasium API:
-        - __init__
-        - reset
-        - step
-        - render
-        - close
     """
 
     metadata = {"render_modes": ["human"], "render_fps": 4}
@@ -263,7 +256,8 @@ class BalatroEnv(gym.Env):
         self.prev_chips = total_chips
         if new_chips < 0:
             new_chips = 0
-        reward += new_chips
+
+        reward += total_chips # Changed to total so that rewards are not too sparse.
 
         return float(reward)
 
