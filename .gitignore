@@ -11,3 +11,5 @@ coverage.xml
 .coverage
 balatro
 .venv/
+uv.lock
+

@@ -112,6 +112,8 @@ start_epsilon = 1.0
 epsilon_decay = start_epsilon / (n_episodes / 1.01)  # reduce the exploration over time
 final_epsilon = 0.1
 
+random_seed_every_episode = True
+
 import random
 import string
 
@@ -160,6 +162,9 @@ from tqdm import tqdm
 episode_rewards = []
 
 for episode in tqdm(range(n_episodes)):
+    if random_seed_every_episode:
+        env.game_seed = generate_random_string(length=7)
+
     obs, info = env.reset()  # reset returns obs and info
     done = False
     total_reward = 0.0
